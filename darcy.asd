@@ -5,9 +5,10 @@
   :depends-on (#:cl-numerics)
   :components ((:module
                 "src"
+                :serial t
                 :components ((:file "package")
-                             (:file "unsaturated")
+                             (:file "utils")
                              (:file "conductivity")
-                             (:file "darcy")
-                             (:file "utils")))))
+                             (:file "unsaturated")
+                             (:file "darcy")))))
 

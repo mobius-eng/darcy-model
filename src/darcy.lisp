@@ -1,16 +1,20 @@
 (in-package darcy-model)
-
-;; (defgeneric full-conductivity (model effsat)
-;;   (declare (optimize (speed 3)))
-;;   (:documentation "Full conductivity of the model dependent on effective saturation"))
-
+;; * Darcy model
+;; ** Inlet (specific) discharge
+;; *** Rational
+;; To make it easier to input and to inspect inlet discharges, they are
+;; implemented as classes-functions (with metaclass
+;; =CLOSER-MOP:FUNCALLABLE-STANDARD-CLASS=).
+;; *** Constant inlet discharge
+;; Simple constant function represented as a class.
 (defclass constant-inlet-discharge ()
   ((inlet-flow-rate
     :initarg :inlet-flow-rate
     :initform (/ 10d0 1000d0 3600d0)
     :accessor inlet-flow-rate
     :documentation "Flow rate in m/s"))
-  (:metaclass closer-mop:funcallable-standard-class))
+  (:metaclass closer-mop:funcallable-standard-class)
+  (:documentation "Constant inlet discharge"))
 
 (defmethod initialize-instance :after ((obj constant-inlet-discharge) &key)
   (closer-mop:set-funcallable-instance-function
@@ -20,6 +24,18 @@
                 (optimize (speed 3)))
        (inlet-flow-rate obj))))
 
+(defmethod print-object ((obj constant-inlet-discharge) out)
+  (with-slots (inlet-flow-rate) obj
+    (print-unreadable-object (obj out :type t)
+      (format out "~@<~:_rate = ~A~:>" inlet-flow-rate))))
+;; *** Fluctuating (regular) inlet discharge
+;; Represents three-parameter regular fluctuating (oscillating) inlet
+;; discharge defined by
+;; \begin{equation}
+;; q_{\text{inlet}} = \frac{1}{2}M(\sin{(2\piF[t-D])} + 1),
+;; \end{equation}
+;; with $M$ being =INLET-FLOW-RATE=, $F$ being =FLUCTUATION-FREQUENCY=
+;; and $D$ =FLUCTUATION-DELAY=.
 (defclass fluctuating-inlet-discharge (constant-inlet-discharge)
   ((fluctuation-frequency
     :initarg :fluctuation-frequency
@@ -31,7 +47,6 @@
     :documentation "Delay in s"))
   (:metaclass closer-mop:funcallable-standard-class))
 
-
 (defmethod initialize-instance :after ((obj fluctuating-inlet-discharge) &key)
   (closer-mop:set-funcallable-instance-function
    obj
@@ -42,8 +57,19 @@
                     (f fluctuation-frequency)
                     (d fluctuation-delay)) obj
          (declare (type double-float m f d))
-         (* m (sin (* 2d0 pi f (- time d))))))))
+         (* 0.5d0 m (1+ (sin (* 2d0 pi f (- time d)))))))))
 
+(defmethod print-object ((obj fluctuating-inlet-discharge) out)
+  (with-slots ((m inlet-flow-rate)
+               (f fluctuation-frequency)
+               (d fluctuation-delay)) obj
+    (print-unreadable-object (obj out :type t)
+      (format out "~A * sin(2pi * ~A * (t - ~A))" m f d))))
+
+;; *** Noisy inlet discharge
+;; This inlet discharge is a composite of a base inlet discharge with the
+;; noise: noise is applied as a percentage of the effective value of the
+;; base inlet discharge.
 (defclass noisy-inlet-discharge ()
   ((inlet-discharge-noise
     :initarg :inlet-discharge-noise
@@ -64,50 +90,63 @@
                     (base base-inlet-discharge)) obj
          (* (funcall base time) (+ 1d0 (random (* 2d0 noise)) (- noise)))))))
 
+(defmethod print-object ((obj noisy-inlet-discharge) out)
+  (with-slots ((noise inlet-discharge-noise)
+               (inlet base-inlet-discharge)) obj
+    (print-unreadable-object (obj out :type t)
+      (format out "~@<~:_Base = ~A ~:_Noise = ~A~:>" inlet noise))))
+;; ** Darcy Model implementation
+;; *** Class definition
 (defclass darcy ()
   ((space-step
     :initarg :space-step
-    :initform 0.05
+    :initform 0.05d0
+    :type double-float
     :accessor space-step
     :documentation "Spatial step size (m)")
    (conductivities
     :initarg :conductivities
     :accessor conductivities
     :initform nil
+    :type (simple-array conductivity *)
     :documentation "Saturated conductivities part of Darcy's model")
    (unsaturated-models
     :initarg :unsaturated-models
     :initform nil
     :accessor unsaturated-models
+    :type (simple-array Unsaturated *)
     :documentation "Unsaturated (sub-)models of Darcy's model")
    (inlet-discharge
     :initarg :inlet-discharge
     :initform (make-instance 'constant-inlet-discharge  :inlet-flow-rate (/ 10d0 1000d0 3600d0))
     :accessor inlet-discharge
     :documentation "Inlet specific discharge (m/s)")))
-
+;; *** Printing
 (defmethod print-object ((obj darcy) out)
   (with-slots (space-step conductivities unsaturated-models inlet-discharge) obj
     (print-unreadable-object (obj out :type t)
       (format out "~@<~:_dz = ~A ~:_conductivity = ~A ~:_unsaturated = ~A ~:_inlet discharge = ~A ~:>"
               space-step conductivities unsaturated-models inlet-discharge))))
+;; *** Utility reader methods
+(defmethod darcy-size ((model darcy))
+  "Returns number of mesh points"
+  (declare (optimize (speed 3)))
+  (length (the simple-array (unsaturated-models model))))
 
-;; it's impossible to use in this form
-;; (defmethod full-conductivity ((model darcy) (effsat double-float))
-;;   (* (relative-conductivity (darcy-unsaturated model) effsat)
-;;      (saturated-conductivity (darcy-conductivity model))))
+(defmethod darcy-points ((model darcy))
+  "Returns mesh points (centres of volumes)"
+  (with-slots ((dz space-step)) model
+    (loop for i from 0 below (darcy-size model)
+         collect (+ (/ dz 2) (* dz i)))))
 
-(defun conductivity (model saturation index)
-  "Gets the full conductivity at INDEX of the DARCY MODEL for SATURATION"
-  (declare (type darcy model)
-           (type (simple-array (double-float 0d0 1d0) *) saturation)
-           (type fixnum index))
-  (* (relative-conductivity (aref (unsaturated-models model) index)
-                            (aref saturation index))
-     (saturated-conductivity (aref (conductivities model) index))))
+(defmethod darcy-depth ((model darcy))
+  "Depth (or height) of the packing"
+  (with-slots ((dz space-step)) model
+    (* dz (darcy-size model))))
 
-
+;; *** Utility operating functions
 (defun darcy-flux! (flux-vector pressure conductivity space-step)
+  "Fills in FLUX-VECTOR using K(psi) * (partial_z(psi) - 1)"
   (declare (optimize (speed 3))
            (type (simple-array double-float *) flux-vector pressure conductivity)
            (type double-float space-step))
@@ -121,22 +160,14 @@
                         (aref pressure (1- i))
                         (aref pressure i)))))))
 
-(defmethod darcy-size ((model darcy))
-  (declare (optimize (speed 3)))
-  (length (the simple-array (unsaturated-models model))))
-
-(defmethod darcy-points ((model darcy))
-  (with-slots ((dz space-step)) model
-    (loop for i from 0 below (darcy-size model)
-         collect (+ (/ dz 2) (* dz i)))))
-
-(defmethod darcy-depth ((model darcy))
-  (with-slots ((dz space-step)) model
-    (* dz (darcy-size model))))
-
 (defun fill-array! (function array &rest arrays)
+  "Uses FUNCTION to fill the ARRAY. The following rules apply:
+   - If ARRAYS is NIL, FUNCTION is applied to each item in ARRAY
+   - If 1 or more ARRAYS are supplied, FUNCTION is applied to their items only,
+     not to ARRAY items.
+  FUNCTION must return a value that will be set to each ARRAY item"
   (declare (optimize (speed 3))
-           (type function function)
+           (type (function * double-float) function)
            (type (simple-array double-float) array))
   (let ((n (length arrays)))
     (case n
@@ -165,11 +196,10 @@
                                     (aref ar i))
                                   arrays))))))))
 
-
+;; *** Richard's equation
 (defun richards-equation (model)
   "Produces RHS of Richards equation for saturation for MODEL"
-  (declare (optimize (speed 3))
-           (type darcy model))
+  (declare (optimize (speed 3)) (type darcy model))
   (let* ((size (darcy-size model))
          (flux (make-array (1+ (the fixnum size)) :element-type 'double-float))
          (conductivity (make-array size :element-type 'double-float))
@@ -180,11 +210,12 @@
                  conductivities
                  inlet-discharge) model
       (declare (type double-float space-step))
-      (declare (type simple-array unsaturated))
+      (declare (type (simple-array t *) unsaturated conductivities))
       (lambda (time s ds)
         (declare (type double-float time)
                  (type (simple-array double-float) s)
                  (type (vector double-float) ds))
+        ;; Produce full conductivity
         (fill-array! (lambda (c u s)
                        (* (the double-float (saturated-conductivity c))
                           (the double-float (relative-conductivity u s))))
@@ -192,13 +223,16 @@
                      conductivities
                      unsaturated
                      s)
+        ;; Produce capillary pressure from saturation
         (fill-array! #'pressure
                      pressure
                      unsaturated
                      s)
+        ;; Fill in flux vector
         (darcy-flux! flux pressure conductivity space-step)
         (setf (aref flux 0) (funcall (the function inlet-discharge) time))
         (setf (aref flux size) (aref conductivity (1- (the fixnum size))))
+        ;; Fill in divergence of flux
         (loop for i from 0 below size
            do (setf (aref ds i)
                     (- (* (/ (- (the double-float (saturated-water-content (aref unsaturated i)))
@@ -206,6 +240,7 @@
                           (/ (the double-float (- (aref flux (1+ i)) (aref flux i)))
                              space-step)))))))))
 
+;; *** Main interface: saturation evolution over time
 (defun darcy-evolve (model init-saturation final-time output-time-step &key suppress-output)
   "Produces time-evolved saturation evolution of the MODEL"
   (let ((output nil))
@@ -223,6 +258,7 @@
                     #'collect-output)
       (nreverse output))))
 
+;; *** Factory functions producing particular models
 (defun uniform-darcy-model (&key conductivity unsaturated
                               (height 1d0) (mesh-points-number 20)
                               (inlet-discharge (make-instance 'constant-inlet-discharge
@@ -273,4 +309,3 @@ where VALUE is the value from the argument list"
       :unsaturated-models u
       :conductivities c
       :space-step dz)))
-
