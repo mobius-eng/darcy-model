@@ -1,0 +1,26 @@
+#+TITLE: Darcy model interface
+#+AUTHOR: Alexey Cherkaev
+#+DATE: 2016
+
+* Setting up
+
+#+BEGIN_SRC lisp exports: code
+  (ql:quickload :darcy)
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC lisp exports: code
+  (use-package :darcy)
+#+END_SRC
+
+#+RESULTS:
+: T
+
+* Input
+** Model type
+
+** Submodel types
+
+** Input parameters
+

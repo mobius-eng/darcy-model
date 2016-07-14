@@ -1,0 +1,9 @@
+#+TITLE: Darcy model
+#+AUTHOR: mobius-eng
+#+DATE: 2016
+
+* Introduction
+This package represents the implementation of Darcy's model for
+unsaturated flow (also known as /Richard's equation/).
+
+See =darcy-use.lisp= file for example of usage.
