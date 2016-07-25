@@ -5,6 +5,7 @@
 ;; To make it easier to input and to inspect inlet discharges, they are
 ;; implemented as classes-functions (with metaclass
 ;; =CLOSER-MOP:FUNCALLABLE-STANDARD-CLASS=).
+
 ;; *** Constant inlet discharge
 ;; Simple constant function represented as a class.
 (defclass constant-inlet-discharge ()
@@ -28,11 +29,12 @@
   (with-slots (inlet-flow-rate) obj
     (print-unreadable-object (obj out :type t)
       (format out "~@<~:_rate = ~A~:>" inlet-flow-rate))))
+
 ;; *** Fluctuating (regular) inlet discharge
 ;; Represents three-parameter regular fluctuating (oscillating) inlet
 ;; discharge defined by
 ;; \begin{equation}
-;; q_{\text{inlet}} = \frac{1}{2}M(\sin{(2\piF[t-D])} + 1),
+;; q_{\text{inlet}} = \frac{1}{2}M(\sin{(2\pi F[t-D])} + 1),
 ;; \end{equation}
 ;; with $M$ being =INLET-FLOW-RATE=, $F$ being =FLUCTUATION-FREQUENCY=
 ;; and $D$ =FLUCTUATION-DELAY=.
@@ -95,6 +97,7 @@
                (inlet base-inlet-discharge)) obj
     (print-unreadable-object (obj out :type t)
       (format out "~@<~:_Base = ~A ~:_Noise = ~A~:>" inlet noise))))
+
 ;; ** Darcy Model implementation
 ;; *** Class definition
 (defclass darcy ()
@@ -121,12 +124,14 @@
     :initform (make-instance 'constant-inlet-discharge  :inlet-flow-rate (/ 10d0 1000d0 3600d0))
     :accessor inlet-discharge
     :documentation "Inlet specific discharge (m/s)")))
+
 ;; *** Printing
 (defmethod print-object ((obj darcy) out)
   (with-slots (space-step conductivities unsaturated-models inlet-discharge) obj
     (print-unreadable-object (obj out :type t)
       (format out "~@<~:_dz = ~A ~:_conductivity = ~A ~:_unsaturated = ~A ~:_inlet discharge = ~A ~:>"
               space-step conductivities unsaturated-models inlet-discharge))))
+
 ;; *** Utility reader methods
 (defmethod darcy-size ((model darcy))
   "Returns number of mesh points"

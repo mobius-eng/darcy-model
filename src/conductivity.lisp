@@ -1,5 +1,6 @@
 (in-package conductivity)
 
+;; * (Saturated) Conductivity model
 (defclass conductivity ()
   ((liquid-viscosity
     :initarg :liquid-viscosity
