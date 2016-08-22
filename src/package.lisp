@@ -2,11 +2,7 @@
 
 (defpackage darcy-utils
   (:use #:cl)
-  (:export #:fill-array #:init-array
-           #:instantiate
-           #:configuration #:configuration-class-name #:configuration-list
-           #:enable-configuration-syntax
-           #:update-configuration))
+  (:export #:fill-array #:init-array))
 
 (defpackage :unsaturated
   (:use #:cl)
@@ -42,16 +38,6 @@
 (defpackage :darcy-use
   (:use #:cl #:unsaturated #:conductivity #:inlet-discharge #:darcy-model #:darcy-utils #:alexandria)
   (:export
-   ;; #:+default-conductivity+
-   ;; #:+default-van-genuchten+ #:+default-brooks-corey+
-   ;; #:+default-constant-inlet-discharge+
-   ;; #:+default-fluctuating-inlet-discharge+
-   ;; #:+default-noisy-inlet-discharge+
-   ;; #:+default-intermittent-inlet-discharge+
-   ;; #:general-darcy-model
-   ;; #:uniform-darcy-model
-   ;; #:perturbed-darcy-model
-   ;; #:perturb-configuration
    ;; Re-export everything else: ease of use:
    ;; darcy-utils
    #:fill-array #:init-array

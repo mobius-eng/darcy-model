@@ -47,7 +47,14 @@
     :initarg :fluctuation-delay
     :accessor fluctuation-delay
     :documentation "Delay in s"))
-  (:metaclass closer-mop:funcallable-standard-class))
+  (:metaclass closer-mop:funcallable-standard-class)
+  (:documentation
+   "Fluctuating inlet discharge is calculated as
+    m * sin(f * (t - d))
+where
+  m is the magnitude (INLET-FLOW-RATE)
+  f is FLUCTUATION-FREQUENCY
+  d is FLUCTUATION-DELAY"))
 
 (defmethod initialize-instance :after ((obj fluctuating-inlet-discharge) &key)
   (closer-mop:set-funcallable-instance-function
@@ -82,7 +89,12 @@
     :initarg :base-inlet-discharge
     :accessor base-inlet-discharge
     :documentation "Base inlet discharge for which the noise will be added"))
-  (:metaclass closer-mop:funcallable-standard-class))
+  (:metaclass closer-mop:funcallable-standard-class)
+  (:documentation
+   "Noisy inlet discharge takes a BASE-INLET-DISCHARGE and adds a noise
+to its value as per
+  m +/- noise * 100%
+Will only have an effect if m > 0 and noise < 1"))
 
 (defmethod initialize-instance :after ((obj noisy-inlet-discharge) &key)
   (closer-mop:set-funcallable-instance-function
@@ -106,7 +118,9 @@
     :documentation "List of pairs (PERIOD INLET-DISCHARGE)")
    (cycle-time
     :documentation "Overall time of the cycle"))
-  (:documentation "Representation for intermittent irrigation")
+  (:documentation
+   "Representation for intermittent irrigation. Each intermittent cycle is
+represented as the collection of flow rates (INERMITTENT-PERIODS-FLOW-RATES)")
   (:metaclass closer-mop:funcallable-standard-class))
 
 (defmethod initialize-instance :after ((obj intermittent-inlet-discharge) &key)

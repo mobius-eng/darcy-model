@@ -24,15 +24,19 @@
     :documentation "Unsaturated (sub-)models of Darcy's model")
    (inlet-discharge
     :initarg :inlet-discharge
-    :initform (make-instance 'constant-inlet-discharge  :inlet-flow-rate (/ 10d0 1000d0 3600d0))
+    :initform (make-instance 'constant-inlet-discharge
+                :inlet-flow-rate (/ 10d0 1000d0 3600d0))
     :accessor inlet-discharge
-    :documentation "Inlet specific discharge (m/s)")))
+    :documentation "Inlet specific discharge (m/s)"))
+  (:documentation
+   "Representation of the full 1D discretized Darcy model."))
 
 ;; *** Printing
 (defmethod print-object ((obj darcy) out)
   (with-slots (space-step conductivities unsaturated-models inlet-discharge) obj
     (print-unreadable-object (obj out :type t)
-      (format out "~@<~:_dz = ~A ~:_conductivity = ~A ~:_unsaturated = ~A ~:_inlet discharge = ~A ~:>"
+      (format out "~@<~:_dz = ~A ~:_conductivity = ~A ~:_unsaturated = ~A \
+~:_inlet discharge = ~A ~:>"
               space-step conductivities unsaturated-models inlet-discharge))))
 
 ;; *** Utility reader methods
@@ -69,42 +73,6 @@
                         (aref pressure (1- i))
                         (aref pressure i)))))))
 
-(defun fill-array! (function array &rest arrays)
-  "Uses FUNCTION to fill the ARRAY. The following rules apply:
-   - If ARRAYS is NIL, FUNCTION is applied to each item in ARRAY
-   - If 1 or more ARRAYS are supplied, FUNCTION is applied to their items only,
-     not to ARRAY items.
-  FUNCTION must return a value that will be set to each ARRAY item"
-  (declare (optimize (speed 3))
-           (type (function * double-float) function)
-           (type (simple-array double-float) array))
-  (let ((n (length arrays)))
-    (case n
-      ((0)
-       (loop for i from 0 below (length array)
-           do (setf (aref array i)
-                    (funcall function (aref array i)))))
-      ((2)
-       (destructuring-bind (ar1 ar2) arrays
-         (declare (type simple-array ar1 ar2))
-         (loop for i from 0 below (length array)
-            do (setf (aref array i)
-                     (funcall function (aref ar1 i) (aref ar2 i))))))
-      ((3)
-       (destructuring-bind (ar1 ar2 ar3) arrays
-         (declare (type simple-array ar1 ar2 ar3))
-         (loop for i from 0 below (length array)
-            do (setf (aref array i)
-                     (funcall function (aref ar1 i) (aref ar2 i) (aref ar3 i))))))
-      (otherwise
-       (loop for i from 0 below (length array)
-          do (setf (aref array i)
-                   (apply function
-                          (mapcar (lambda (ar)
-                                    (declare (type simple-array ar))
-                                    (aref ar i))
-                                  arrays))))))))
-
 ;; *** Richard's equation
 (defun richards-equation (model)
   "Produces RHS of Richards equation for saturation for MODEL"
@@ -130,28 +98,33 @@
             ((>= i size))
           (declare (type fixnum i))
           (setf (aref full-conductivity i)
-                (* (the double-float (saturated-conductivity (aref conductivity i)))
+                (* (the double-float (saturated-conductivity
+                                      (aref conductivity i)))
                    (the
                     double-float
                     (relative-conductivity (aref unsaturated i)
                              (aref s i)))))
-          (setf (aref pressure i) (pressure (aref unsaturated i) (aref s i))))
+          (setf (aref pressure i)
+                (pressure (aref unsaturated i) (aref s i))))
         (darcy-flux! flux pressure full-conductivity space-step)
-        (setf (aref flux 0) (funcall (the function (inlet-discharge model)) time))
-        (setf (aref flux size) (aref full-conductivity (1- (the fixnum size))))
+        (setf (aref flux 0)
+              (funcall (the function (inlet-discharge model)) time))
+        (setf (aref flux size)
+              (aref full-conductivity (1- (the fixnum size))))
         (loop for i from 0 below size
            do (setf (aref ds i)
                     (- (* (/ (- (the double-float (saturated-water-content
                                                    (aref unsaturated i)))
                                 (the double-float (residual-water-content
                                                    (aref unsaturated i)))))
-                          (/ (the double-float (- (aref flux (1+ i)) (aref flux i)))
+                          (/ (the double-float (- (aref flux (1+ i))
+                                                  (aref flux i)))
                              space-step)))))))))
 
 ;; *** Main interface: saturation evolution over time
 (defun darcy-evolve (model init-saturation final-time output-time-step
                      &key suppress-output)
-  "Produces time-evolved saturation evolution of the MODEL"
+  "Produces time-dependent saturation evolution of the MODEL"
   (let ((output (list (cons 0d0 (copy-seq init-saturation)))))
     (flet ((collect-output (time y)
              (unless suppress-output

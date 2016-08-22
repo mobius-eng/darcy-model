@@ -13,14 +13,16 @@
     :initform 1d-8
     :accessor intrinsic-permeability
     :documentation
-    "Intrinsic permeability of the medium, independent of liquid properties, m2"))
+    "Intrinsic permeability of the medium, \
+independent of liquid properties, m2"))
   (:documentation
    "Saturated conductivity"))
 
 (defmethod print-object ((obj conductivity) out)
   (with-slots (liquid-viscosity intrinsic-permeability) obj
     (print-unreadable-object (obj out :type t)
-      (format out "~@<~:_liq kinem viscosity (nu) = ~A m2/s ~:_intrinsic permeability = ~A m2~:>"
+      (format out "~@<~:_liq kinem viscosity (nu) = ~A m2/s \
+~:_intrinsic permeability = ~A m2~:>"
               liquid-viscosity intrinsic-permeability))))
 
 (defgeneric saturated-conductivity (conductivity)
