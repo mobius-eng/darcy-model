@@ -1,102 +1,5 @@
 (in-package darcy-model)
 ;; * Darcy model
-;; ** Inlet (specific) discharge
-;; *** Rational
-;; To make it easier to input and to inspect inlet discharges, they are
-;; implemented as classes-functions (with metaclass
-;; =CLOSER-MOP:FUNCALLABLE-STANDARD-CLASS=).
-
-;; *** Constant inlet discharge
-;; Simple constant function represented as a class.
-(defclass constant-inlet-discharge ()
-  ((inlet-flow-rate
-    :initarg :inlet-flow-rate
-    :initform (/ 10d0 1000d0 3600d0)
-    :accessor inlet-flow-rate
-    :documentation "Flow rate in m/s"))
-  (:metaclass closer-mop:funcallable-standard-class)
-  (:documentation "Constant inlet discharge"))
-
-(defmethod initialize-instance :after ((obj constant-inlet-discharge) &key)
-  (closer-mop:set-funcallable-instance-function
-   obj
-   #'(lambda (x)
-       (declare (ignore x)
-                (optimize (speed 3)))
-       (inlet-flow-rate obj))))
-
-(defmethod print-object ((obj constant-inlet-discharge) out)
-  (with-slots (inlet-flow-rate) obj
-    (print-unreadable-object (obj out :type t)
-      (format out "~@<~:_rate = ~A~:>" inlet-flow-rate))))
-
-;; *** Fluctuating (regular) inlet discharge
-;; Represents three-parameter regular fluctuating (oscillating) inlet
-;; discharge defined by
-;; \begin{equation}
-;; q_{\text{inlet}} = \frac{1}{2}M(\sin{(2\pi F[t-D])} + 1),
-;; \end{equation}
-;; with $M$ being =INLET-FLOW-RATE=, $F$ being =FLUCTUATION-FREQUENCY=
-;; and $D$ =FLUCTUATION-DELAY=.
-(defclass fluctuating-inlet-discharge (constant-inlet-discharge)
-  ((fluctuation-frequency
-    :initarg :fluctuation-frequency
-    :accessor :fluctuation-frequency
-    :documentation "Frequency in 1/s")
-   (fluctuation-delay
-    :initarg :fluctuation-delay
-    :accessor fluctuation-delay
-    :documentation "Delay in s"))
-  (:metaclass closer-mop:funcallable-standard-class))
-
-(defmethod initialize-instance :after ((obj fluctuating-inlet-discharge) &key)
-  (closer-mop:set-funcallable-instance-function
-   obj
-   #'(lambda (time)
-       (declare (optimize (speed 3))
-                (type double-float time))
-       (with-slots ((m inlet-flow-rate)
-                    (f fluctuation-frequency)
-                    (d fluctuation-delay)) obj
-         (declare (type double-float m f d))
-         (* 0.5d0 m (1+ (sin (* 2d0 pi f (- time d)))))))))
-
-(defmethod print-object ((obj fluctuating-inlet-discharge) out)
-  (with-slots ((m inlet-flow-rate)
-               (f fluctuation-frequency)
-               (d fluctuation-delay)) obj
-    (print-unreadable-object (obj out :type t)
-      (format out "~A * sin(2pi * ~A * (t - ~A))" m f d))))
-
-;; *** Noisy inlet discharge
-;; This inlet discharge is a composite of a base inlet discharge with the
-;; noise: noise is applied as a percentage of the effective value of the
-;; base inlet discharge.
-(defclass noisy-inlet-discharge ()
-  ((inlet-discharge-noise
-    :initarg :inlet-discharge-noise
-    :accessor inlet-discharge-noise
-    :type (double-float 0d0 1d0)
-    :documentation "White noise for the discharge")
-   (base-inlet-discharge
-    :initarg :base-inlet-discharge
-    :accessor base-inlet-discharge
-    :documentation "Base inlet discharge for which the noise will be added"))
-  (:metaclass closer-mop:funcallable-standard-class))
-
-(defmethod initialize-instance :after ((obj noisy-inlet-discharge) &key)
-  (closer-mop:set-funcallable-instance-function
-   obj
-   #'(lambda (time)
-       (with-slots ((noise inlet-discharge-noise)
-                    (base base-inlet-discharge)) obj
-         (* (funcall base time) (+ 1d0 (random (* 2d0 noise)) (- noise)))))))
-
-(defmethod print-object ((obj noisy-inlet-discharge) out)
-  (with-slots ((noise inlet-discharge-noise)
-               (inlet base-inlet-discharge)) obj
-    (print-unreadable-object (obj out :type t)
-      (format out "~@<~:_Base = ~A ~:_Noise = ~A~:>" inlet noise))))
 
 ;; ** Darcy Model implementation
 ;; *** Class definition
@@ -141,8 +44,9 @@
 (defmethod darcy-points ((model darcy))
   "Returns mesh points (centres of volumes)"
   (with-slots ((dz space-step)) model
-    (loop for i from 0 below (darcy-size model)
-         collect (+ (/ dz 2) (* dz i)))))
+    (apply #'vector
+           (loop for i from 0 below (darcy-size model)
+              collect (+ (/ dz 2) (* dz i))))))
 
 (defmethod darcy-depth ((model darcy))
   "Depth (or height) of the packing"
@@ -204,51 +108,51 @@
 ;; *** Richard's equation
 (defun richards-equation (model)
   "Produces RHS of Richards equation for saturation for MODEL"
-  (declare (optimize (speed 3)) (type darcy model))
+  (declare (optimize (speed 3))
+           (type darcy model))
   (let* ((size (darcy-size model))
          (flux (make-array (1+ (the fixnum size)) :element-type 'double-float))
-         (conductivity (make-array size :element-type 'double-float))
+         (full-conductivity (make-array size :element-type 'double-float))
          (pressure (make-array size :element-type 'double-float)))
-    (declare (type (simple-array double-float) flux conductivity pressure))
+    (declare (type (simple-array double-float) flux full-conductivity pressure)
+             (type fixnum size))
     (with-slots ((unsaturated unsaturated-models)
                  space-step
-                 conductivities
-                 inlet-discharge) model
+                 (conductivity conductivities)) model
       (declare (type double-float space-step))
-      (declare (type (simple-array t *) unsaturated conductivities))
+      (declare (type simple-array unsaturated conductivity))
       (lambda (time s ds)
         (declare (type double-float time)
                  (type (simple-array double-float) s)
                  (type (vector double-float) ds))
-        ;; Produce full conductivity
-        (fill-array! (lambda (c u s)
-                       (* (the double-float (saturated-conductivity c))
-                          (the double-float (relative-conductivity u s))))
-                     conductivity
-                     conductivities
-                     unsaturated
-                     s)
-        ;; Produce capillary pressure from saturation
-        (fill-array! #'pressure
-                     pressure
-                     unsaturated
-                     s)
-        ;; Fill in flux vector
-        (darcy-flux! flux pressure conductivity space-step)
-        (setf (aref flux 0) (funcall (the function inlet-discharge) time))
-        (setf (aref flux size) (aref conductivity (1- (the fixnum size))))
-        ;; Fill in divergence of flux
+        ;; fill in FULL-CONDUCTIVITY & PRESSURE vectors
+        (do ((i 0 (1+ i)))
+            ((>= i size))
+          (declare (type fixnum i))
+          (setf (aref full-conductivity i)
+                (* (the double-float (saturated-conductivity (aref conductivity i)))
+                   (the
+                    double-float
+                    (relative-conductivity (aref unsaturated i)
+                             (aref s i)))))
+          (setf (aref pressure i) (pressure (aref unsaturated i) (aref s i))))
+        (darcy-flux! flux pressure full-conductivity space-step)
+        (setf (aref flux 0) (funcall (the function (inlet-discharge model)) time))
+        (setf (aref flux size) (aref full-conductivity (1- (the fixnum size))))
         (loop for i from 0 below size
            do (setf (aref ds i)
-                    (- (* (/ (- (the double-float (saturated-water-content (aref unsaturated i)))
-                                (the double-float (residual-water-content (aref unsaturated i)))))
+                    (- (* (/ (- (the double-float (saturated-water-content
+                                                   (aref unsaturated i)))
+                                (the double-float (residual-water-content
+                                                   (aref unsaturated i)))))
                           (/ (the double-float (- (aref flux (1+ i)) (aref flux i)))
                              space-step)))))))))
 
 ;; *** Main interface: saturation evolution over time
-(defun darcy-evolve (model init-saturation final-time output-time-step &key suppress-output)
+(defun darcy-evolve (model init-saturation final-time output-time-step
+                     &key suppress-output)
   "Produces time-evolved saturation evolution of the MODEL"
-  (let ((output nil))
+  (let ((output (list (cons 0d0 (copy-seq init-saturation)))))
     (flet ((collect-output (time y)
              (unless suppress-output
                (format t "~&time = ~F complete~%" time))
@@ -256,61 +160,10 @@
       (lsoda-evolve (richards-equation model)
                     0.0d0
                     init-saturation
-                    (loop for time from output-time-step
-                       below (+ final-time (* 0.1 output-time-step))
-                       by output-time-step
+                    (loop for time from (coerce output-time-step 'double-float)
+                       below (+ final-time (* 0.1d0 output-time-step))
+                       by (coerce output-time-step 'double-float)
                        collect time)
                     #'collect-output)
       (nreverse output))))
 
-;; *** Factory functions producing particular models
-(defun uniform-darcy-model (&key conductivity unsaturated
-                              (height 1d0) (mesh-points-number 20)
-                              (inlet-discharge (make-instance 'constant-inlet-discharge
-                                                 :inlet-flow-rate (/ 10d0 1000 3600))))
-  (let ((dz (/ height mesh-points-number))
-        (c (apply #'make-instance conductivity))
-        (u (apply #'make-instance unsaturated)))
-    (make-instance 'darcy
-      :inlet-discharge inlet-discharge
-      :unsaturated-models (fill-array u mesh-points-number)
-      :conductivities (fill-array c mesh-points-number)
-      :space-step dz)))
-
-
-(defun perturb-plist (plist perturbations)
-  (apply #'nconc
-   (loop for (k v . rest) on plist by #'cddr
-      if (getf perturbations k)
-      collect (list k (* v (+ 1 (* 2 (getf perturbations k) (random 1d0)) (- (getf perturbations k)))))
-      else
-      collect (list k v))))
-
-(defun perturbed-darcy-model (&key conductivity unsaturated
-                                (height 1d0) (mesh-points-number 20)
-                                (inlet-discharge (make-instance 'constant-inlet-discharge
-                                                   :inlet-flow-rate (/ 10d0 1000 3600)))
-                                perturbations)
-  "Constructs perturbed Darcy's model according perturbations. Perturbations is a plist of the form
-    (:PARAMETER PERTURBATION ...)
-The value for the :PARAMETER (in either conductivity or unsaturated model) will be constructed as
-    VALUE +/- PERTURBATION * 100%
-where VALUE is the value from the argument list"
-  (let ((dz (/ height mesh-points-number))
-        (c (init-array (lambda (ignored)
-                         (declare (ignore ignored))
-                         (let ((arg-list (cons (first conductivity)
-                                               (perturb-plist (rest conductivity) perturbations))))
-                           (apply #'make-instance arg-list)))
-                       mesh-points-number))
-        (u (init-array (lambda (ignored)
-                         (declare (ignore ignored))
-                         (apply #'make-instance
-                                (cons (first unsaturated)
-                                      (perturb-plist (rest unsaturated) perturbations))))
-                       mesh-points-number)))
-    (make-instance 'darcy
-      :inlet-discharge inlet-discharge
-      :unsaturated-models u
-      :conductivities c
-      :space-step dz)))

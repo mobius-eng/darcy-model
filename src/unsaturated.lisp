@@ -1,6 +1,7 @@
 (in-package unsaturated)
 
 ;; * Unsaturated models
+(declaim (optimize (speed 3)))
 
 ;; ** Unsaturated interface
 (defgeneric saturation (model pressure)
@@ -13,7 +14,8 @@
 
 (defgeneric relative-conductivity (model effsat)
   (:documentation
-   "Relative conductivity of unsaturated model from effective saturation"))
+   "Relative conductivity of unsaturated model from effective saturation")
+  (declare (optimize (speed 3))))
 
 ;; ** Unsaturated model representation
 ;; *** Root abstrat class
@@ -30,7 +32,7 @@
     :documentation "Residual saturation of the bed as V[liquid] / V[total]")
    (bubbling-pressure
     :initarg :bubbling-pressure
-    :initform 0.3d0
+    :initform 0.333333d0
     :accessor bubbling-pressure
     :documentation "Bubbling pressure (m)"))
   (:documentation
@@ -43,7 +45,7 @@
     (declare (optimize (speed 3)))
     (with-slots (bubbling-pressure) model
       (declare (type (double-float 0d0 *) bubbling-pressure))
-      (/ bubbling-pressure))))
+      (abs (/ bubbling-pressure)))))
 
 ;; *** Mualem theory model
 (defclass mualem (unsaturated)
@@ -68,7 +70,8 @@
 
 (defmethod initialize-instance :after ((obj van-genuchten) &key)
   (with-slots (n m) obj
-    (when (slot-boundp obj 'n) (setf m (- 1 (/ n))))))
+    (setf n (coerce n 'double-float))
+    (when (slot-boundp obj 'n) (setf m (- 1d0 (/ n))))))
 
 (defmethod print-object ((obj van-genuchten) out)
   (with-slots (bubbling-pressure
@@ -86,7 +89,7 @@
        mualem-exponent
        n m))))
 
-(defmethod saturation ((model van-genuchten) (pressure double-float))
+(defmethod saturation ((model van-genuchten) #-clisp(pressure double-float) #+clisp(pressure float))
   (declare (optimize (speed 3)) (type (double-float * 0d0) pressure))
   (with-slots (n bubbling-pressure m) model
     (declare (type (double-float 0d0 *) n bubbling-pressure m))
@@ -94,7 +97,7 @@
       (declare (type (double-float 0d0) arg))
       (expt (1+ arg) (- m)))))
 
-(defmethod pressure ((model van-genuchten) (effsat double-float))
+(defmethod pressure ((model van-genuchten) #-clisp(effsat double-float) #+clisp(effsat float))
   (declare (optimize (speed 3)) (type (double-float * *) effsat))
   (when (minusp effsat) (setf effsat 1d-6))
   (with-slots (bubbling-pressure n m) model
@@ -106,7 +109,9 @@
           (- (* (expt arg (/ n)) bubbling-pressure))))))
 
 (declaim (inline square))
-(defun square (x) (* x x))
+(defun square (x)
+  (declare (type double-float x))
+  (* x x))
 
 (defmethod relative-conductivity ((model van-genuchten) effsat)
     (declare (optimize (speed 3))
@@ -128,6 +133,11 @@
     :accessor pore-size-distribution-index))
   (:documentation
    "Brooks-Corey-Mualem unsaturated model"))
+
+(defmethod initialize-instance :after ((obj brooks-corey-mualem) &key)
+  (with-slots (pore-size-distribution-index) obj
+    (setf pore-size-distribution-index
+          (coerce pore-size-distribution-index 'double-float))))
 
 (defmethod print-object ((obj brooks-corey-mualem) out)
   (with-slots ((L mualem-exponent)
@@ -153,8 +163,8 @@
     (let ((alpha (unsaturated-alpha model)))
       (declare (type (double-float 0d0 *) alpha))
       (if (< pressure (- (/ alpha)))
-          (expt (* alpha (abs pressure)) lambda)
-          1))))
+          (expt (* alpha (abs pressure)) (- lambda))
+          1d0))))
 
 (defmethod pressure ((model brooks-corey-mualem) effsat)
   (declare (optimize (speed 3))
@@ -163,7 +173,7 @@
     (declare (type double-float lambda))
     (let ((alpha (unsaturated-alpha model)))
       (declare (type (double-float 0d0 *) alpha))
-      (- (/ (expt effsat (/ lambda)) alpha)))))
+      (- (/ (expt effsat (- (/ lambda))) alpha)))))
 
 (defmethod relative-conductivity ((model brooks-corey-mualem) effsat)
   (declare (optimize (speed 3))
