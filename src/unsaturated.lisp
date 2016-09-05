@@ -47,6 +47,12 @@
       (declare (type (double-float 0d0 *) bubbling-pressure))
       (abs (/ bubbling-pressure)))))
 
+(defgeneric water-content (model saturation)
+  (:method ((model unsaturated) saturation)
+    (with-slots ((qs saturated-water-content)
+                 (qr residual-water-content)) model
+      (+ qr (* (- qs qr) saturation)))))
+
 ;; *** Mualem theory model
 (defclass mualem (unsaturated)
   ((mualem-exponent

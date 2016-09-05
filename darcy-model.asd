@@ -2,7 +2,7 @@
   :description "Darcy model simulator"
   :author "Alexey Cherkaev"
   :license "GPLv3"
-  :depends-on (#:cl-numerics #:closer-mop #:alexandria)
+  :depends-on (#:cl-numerics #:closer-mop #:alexandria #:cl-slice)
   :components ((:module
                 "src"
                 :serial t
