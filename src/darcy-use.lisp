@@ -91,7 +91,8 @@
    (output-time-interval
     :initarg :output-time-interval
     :documentation
-    "Interval with which produce the output")
+    "Interval with which produce the output"
+    :accessor darcy-simulation-output-time-interval)
    (fine-time-interval
     :initarg :fine-time-interval
     :documentation
@@ -99,7 +100,8 @@
    (plot-time-interval
     :initarg :plot-time-interval
     :documentation
-    "Interval for plots: usualy longer than OUTPUT-TIME-INTERVAL")
+    "Interval for plots: usualy longer than OUTPUT-TIME-INTERVAL"
+    :accessor darcy-simulation-plot-time-interval)
    (initial-saturation
     :initarg :initial-saturation
     :documentation

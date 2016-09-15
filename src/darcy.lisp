@@ -190,7 +190,7 @@
         (last-time-output 0d0))
     (flet ((collect-output (time y)
              (unless suppress-output
-               (format t "~&time = ~F complete~%" time))
+               (vom:info "time = ~F complete~%" time))
              (push (cons time (darcy-inlet-discharge model time)) inlet)
              (push (cons time (darcy-outlet-discharge model y)) outlet)
              (when (>= (- time last-time-output) output-time-step)

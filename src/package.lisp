@@ -89,5 +89,7 @@
    #:darcy-simulation
    #:darcy-simulation-model
    #:darcy-simulation-results
+   #:darcy-simulation-output-time-interval
+   #:darcy-simulation-plot-time-interval
    #:simulate))
 

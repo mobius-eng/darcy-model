@@ -88,7 +88,11 @@ where
    (base-inlet-discharge
     :initarg :base-inlet-discharge
     :accessor base-inlet-discharge
-    :documentation "Base inlet discharge for which the noise will be added"))
+    :documentation "Base inlet discharge for which the noise will be added")
+   (noise-time-interval
+    :initform 300d0
+    :documentation "Time interval over which the noise won't change")
+   (noise-save :initform (make-hash-table)))
   (:metaclass closer-mop:funcallable-standard-class)
   (:documentation
    "Noisy inlet discharge takes a BASE-INLET-DISCHARGE and adds a noise
@@ -101,8 +105,15 @@ Will only have an effect if m > 0 and noise < 1"))
    obj
    #'(lambda (time)
        (with-slots ((noise inlet-discharge-noise)
-                    (base base-inlet-discharge)) obj
-         (* (funcall base time) (+ 1d0 (random (* 2d0 noise)) (- noise)))))))
+                    (base base-inlet-discharge)
+                    noise-time-interval
+                    noise-save) obj
+         (let* ((interval-number (ceiling time noise-time-interval))
+                (saved-noise (gethash interval-number noise-save)))
+           (unless saved-noise
+             (setf saved-noise (random (* 2d0 noise)))
+             (setf (gethash interval-number noise-save) saved-noise))
+           (* (funcall base time) (+ 1d0 saved-noise (- noise))))))))
 
 (defmethod print-object ((obj noisy-inlet-discharge) out)
   (with-slots ((noise inlet-discharge-noise)
