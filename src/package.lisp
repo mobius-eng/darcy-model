@@ -1,20 +1,5 @@
 (in-package cl-user)
 
-(defpackage darcy-utils
-  (:use #:cl)
-  (:export #:fill-array #:init-array))
-
-(defpackage :unsaturated
-  (:use #:cl)
-  (:export
-   #:saturation #:pressure #:relative-conductivity
-   #:unsaturated #:saturated-water-content #:residual-water-content #:bubbling-pressure
-   #:unsaturated-alpha
-   #:water-content
-   #:mualem #:maulem-exponent
-   #:van-genuchten #:van-genuchten-n #:van-genuchten-m
-   #:brooks-corey-mualem  #:pore-size-distribution-index))
-
 (defpackage :conductivity
   (:use #:cl)
   (:export #:conductivity #:liquid-viscosity

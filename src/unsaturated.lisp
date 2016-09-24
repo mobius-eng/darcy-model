@@ -1,18 +1,31 @@
+(in-package cl-user)
+
+(defpackage :unsaturated
+  (:use #:cl)
+  (:export
+   #:saturation #:pressure #:relative-conductivity
+   #:unsaturated #:saturated-water-content #:residual-water-content #:bubbling-pressure
+   #:unsaturated-alpha
+   #:water-content
+   #:mualem #:maulem-exponent
+   #:van-genuchten #:van-genuchten-n #:van-genuchten-m
+   #:brooks-corey-mualem  #:pore-size-distribution-index))
+
 (in-package unsaturated)
 
 ;; * Unsaturated models
-(declaim (optimize (speed 3)))
+;; (declaim (optimize (speed 3)))
 
 ;; ** Unsaturated interface
-(defgeneric saturation (model pressure)
+(defgeneric saturation (model)
   (:documentation
    "Effective saturation of unsaturated model from capillary pressure"))
 
-(defgeneric pressure (model effsat)
+(defgeneric pressure (model)
   (:documentation
    "Capillary pressure of unsaturated model from effective saturation"))
 
-(defgeneric relative-conductivity (model effsat)
+(defgeneric relative-conductivity (model)
   (:documentation
    "Relative conductivity of unsaturated model from effective saturation")
   (declare (optimize (speed 3))))
