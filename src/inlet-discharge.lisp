@@ -1,3 +1,13 @@
+(in-package cl-user)
+
+(defpackage :inlet-discharge
+  (:use #:cl)
+  (:export
+   #:constant-inlet-discharge #:inlet-flow-rate
+   #:fluctuating-inlet-discharge #:fluctuation-frequency #:fluctuation-delay
+   #:noisy-inlet-discharge #:inlet-discharge-noise
+   #:intermittent-inlet-discharge #:intermittent-periods-flow-rates))
+
 (in-package inlet-discharge)
 
 ;; * Inlet (specific) discharge

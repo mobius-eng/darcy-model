@@ -10,8 +10,7 @@
   :components ((:module
                 "src"
                 :serial t
-                :components ((:file "package")
-                             (:file "utils")
+                :components ((:file "utils")
                              (:file "conductivity")
                              (:file "unsaturated")
                              (:file "inlet-discharge")

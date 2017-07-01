@@ -3,4 +3,6 @@
 *.cl~
 *.lsp~
 *.asd~
+*.org~
 *.gitignore~
+ltximg/*

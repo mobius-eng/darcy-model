@@ -1,3 +1,10 @@
+(in-package cl-user)
+
+(defpackage :conductivity
+  (:use #:cl)
+  (:export #:conductivity #:liquid-viscosity
+           #:intrinsic-permeability #:saturated-conductivity))
+
 (in-package conductivity)
 
 ;; * (Saturated) Conductivity model

@@ -1,3 +1,10 @@
+(in-package cl-user)
+
+(defpackage darcy-utils
+  (:use #:cl)
+  (:export #:fill-array #:init-array))
+
+
 (in-package darcy-utils)
 
 ;; * General utility functions
