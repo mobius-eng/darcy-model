@@ -1,3 +1,56 @@
+(in-package cl-user)
+
+(defpackage :darcy-use
+  (:use #:cl #:unsaturated #:conductivity #:inlet-discharge
+        #:darcy-model #:darcy-utils #:alexandria
+        #:cl-slice)
+  (:export ;; re-export utils - useful
+   #:fill-array #:init-array)
+  (:export ;; unsaturated
+   #:saturation #:pressure #:relative-conductivity
+   #:unsaturated #:saturated-water-content #:residual-water-content #:bubbling-pressure
+   #:unsaturated-alpha
+   #:water-content
+   #:mualem #:maulem-exponent
+   #:van-genuchten #:van-genuchten-n #:van-genuchten-m
+   #:brooks-corey-mualem  #:pore-size-distribution-index)
+  (:export ;; conductivity
+   #:conductivity #:liquid-viscosity
+   #:intrinsic-permeability #:saturated-conductivity)
+  (:export ;; inlet discharge
+   #:constant-inlet-discharge #:inlet-flow-rate
+   #:fluctuating-inlet-discharge #:fluctuation-frequency #:fluctuation-delay
+   #:noisy-inlet-discharge #:inlet-discharge-noise
+   #:intermittent-inlet-discharge #:intermittent-periods-flow-rates)
+  (:export ;; darcy model
+   #:darcy #:space-step #:conductivities #:unsaturated-models #:inlet-discharge
+   #:darcy-size #:darcy-points #:darcy-boundaries #:darcy-depth
+   #:darcy-water-volume
+   #:pressure-at #:conductivity-at
+   #:full-conductivity
+   #:richards-equation
+   #:darcy-evolve)
+  (:export ;; simulate
+   #:simulation-results
+   #:simulation-results-time
+   #:simulation-results-mesh-points
+   #:simulation-results-mesh-boundaries
+   #:simulation-results-saturation
+   #:simulation-results-discharge-time
+   #:simulation-results-inlet-discharge
+   #:simulation-results-outlet-discharge
+   #:column-average-saturation
+   #:consumed-water
+   #:results-water-volume
+   #:abs-water-balance-error
+   #:water-balance-error
+   #:darcy-simulation
+   #:darcy-simulation-model
+   #:darcy-simulation-results
+   #:darcy-simulation-output-time-interval
+   #:darcy-simulation-plot-time-interval
+   #:simulate))
+
 (in-package darcy-use)
 
 ;; * Simulation probem
@@ -14,7 +67,7 @@
    (saturation
     :initarg :saturation
     :accessor simulation-results-saturation)
-   (inlet-discharga
+   (inlet-discharge
     :initarg :inlet-discharge
     :accessor simulation-results-inlet-discharge)
    (outlet-discharge
@@ -22,7 +75,10 @@
     :accessor simulation-results-outlet-discharge)
    (discharge-time
     :initarg :discharge-time
-    :accessor simulation-results-discharge-time)))
+    :accessor simulation-results-discharge-time)
+   (model
+    :initarg :model
+    :accessor simulation-results-model)))
 
 (defun integrate (function-values boundaries)
   (loop for f across function-values
@@ -54,8 +110,10 @@
                            'double-float)
                time)))
 
-(defun results-water-volume (model results &optional (area 1d0))
-  (with-accessors ((s simulation-results-saturation)) results
+(defun results-water-volume (results &optional (area 1d0))
+  (with-accessors ((s simulation-results-saturation)
+                   (model simulation-results-model))
+      results
     (init-array
      (lambda (i)
        (reduce #'+
@@ -63,16 +121,17 @@
      (array-dimension s 0)
      'double-float)))
 
-(defun abs-water-balance-error (model results)
+(defun abs-water-balance-error (results)
   (let ((consumed-water (consumed-water results))
-        (water-volume (results-water-volume model results)))
+        (water-volume (results-water-volume results)))
     (abs (- (slice water-volume -1) (slice water-volume 0) consumed-water))))
 
-(defun water-balance-error (model results)
+(defun water-balance-error (results)
   (with-accessors ((in simulation-results-inlet-discharge)
                    (out simulation-results-outlet-discharge)
-                   (time simulation-results-discharge-time)) results
-    (let ((abs-error (abs-water-balance-error model results))
+                   (time simulation-results-discharge-time))
+      results
+    (let ((abs-error (abs-water-balance-error results))
           (inlet-overall (integrate in time))
           (outlet-overall (integrate out time)))
       (/ abs-error (+ inlet-overall outlet-overall)))))
@@ -170,4 +229,5 @@
                   :saturation saturation-matrix
                   :discharge-time discharge-time
                   :inlet-discharge inlet-discharge
-                  :outlet-discharge outlet-discharge)))))))
+                  :outlet-discharge outlet-discharge
+                  :model darcy)))))))

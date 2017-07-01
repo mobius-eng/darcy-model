@@ -1,0 +1,55 @@
+#+TITLE: Darcy model TODO list and documentation
+
+* Features to add and implement
+** TODO Sort out the dependencies[0/2]
+*** TODO Complete =CL-NUMERICS-LINEAR=
+    Don't need to do anything really, for =CL-NUMERICS= to work.
+*** TODO Changes in =CL-NUMERICS= [5/7]
+**** DONE Merge UTILS.LISP and CL-NUMERICS-SCALAR
+     CLOSED: [2017-06-28 Wed 13:37]
+**** DONE UTILS.LISP: RMS-NORM and EWT are the only ones depending on linear
+     CLOSED: [2017-06-28 Wed 13:37]
+     They are not used anywhere anyway, maybe just remove them.
+**** DONE QUAD.LISP: requires inifities -- supply in CL-NUMERICS-SCALAR
+     CLOSED: [2017-06-28 Wed 13:37]
+**** DONE QUAD.LISP: Add documentation
+     CLOSED: [2017-06-28 Wed 13:48]
+**** TODO QUAD.LISP: Improve abstraction layer
+     Translate error codes to conditions.
+**** DONE ODE.LISP: Add documentation
+     CLOSED: [2017-06-28 Wed 13:56]
+**** TODO ODE.LISP: Simplify LSODA-STEP
+     Function decoration and =RTOL= and =ATOL= manipulations must be
+     performed once only in evolve (drive) function.
+** TODO User functions to run model [2/4]
+*** DONE Unsaturated model properties [3/3]
+**** DONE Saturation-capillary pressure plot
+     CLOSED: [2017-06-29 Thu 00:23]
+     - [X] Instantiate models
+     - [X] Get the results in Maxima's form
+**** DONE Saturation-conductivity plot
+     CLOSED: [2017-06-29 Thu 00:24]
+**** DONE Plots wiht varying parameters
+     CLOSED: [2017-06-29 Thu 21:43]
+*** TODO Create model[1/4]
+**** DONE Uniform model with const flow rate
+     CLOSED: [2017-06-30 Fri 13:18]
+**** TODO Uniform model with intermittent flow rate
+**** TODO Perturbed packing model with const flow rate
+**** TODO Perturbed packing with perturbed flow rate
+*** DONE Create simulation
+    CLOSED: [2017-06-30 Fri 16:51]
+*** TODO Disect the results in Maxima & build plots[3/4]
+**** DONE Convert result arrays to lists.
+     CLOSED: [2017-06-30 Fri 16:51]
+**** TODO Plot the results[2/3]
+     - [X] Saturation
+     - [X] Discharge
+     - [ ] Water content/volume
+**** DONE See how to pass more parameters to gnuplot.
+     CLOSED: [2017-06-30 Fri 16:51]
+**** DONE maxima and org-mode: display results and plots
+     CLOSED: [2017-06-30 Fri 16:52]
+     This one doesn't work: ob-maxima does not support sessions.
+
+

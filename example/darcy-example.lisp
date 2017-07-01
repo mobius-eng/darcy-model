@@ -35,7 +35,7 @@
     :initial-saturation *s0*
     :final-time *final-time*
     :output-time-interval *output-time-interval*
-    :fine-time-interval (/ *output-time-interval* 10)
+    :fine-time-interval (/ *output-time-interval* 1)
     :plot-time-interval *output-time-interval*))
 
 (simulate *simulation*)

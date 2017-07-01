@@ -36,17 +36,20 @@
   ((saturated-water-content
     :initarg :saturated-water-content
     :initform 0.3d0
+    :type double-float
     :accessor saturated-water-content
     :documentation "Maximum saturation of the bed as V[liquid] / V[total]")
    (residual-water-content
     :initarg :residual-water-content
     :initform 0.05d0
+    :type double-float
     :accessor residual-water-content
     :documentation "Residual saturation of the bed as V[liquid] / V[total]")
    (bubbling-pressure
     :initarg :bubbling-pressure
     :initform 0.333333d0
     :accessor bubbling-pressure
+    :type bubbling-pressure
     :documentation "Bubbling pressure (m)"))
   (:documentation
    "Root class for unsaturated models"))
