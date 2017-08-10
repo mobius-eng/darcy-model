@@ -11,11 +11,12 @@
 (defvar *van-genuchten*
   (make-instance 'van-genuchten))
 
-(defvar *inlet* (make-instance 'constant-inlet-discharge))
+(defvar *inlet* (make-instance 'constant-inlet-discharge
+                  :inlet-flow-rate (/ 5d0 1000d0 3600d0)))
 
 (defvar *size* 20)
 
-(defvar *space-step* 0.05d0)
+(defvar *space-step* (/ 0.3d0 *size*))
 
 (defvar *darcy-model*
   (make-instance 'darcy
@@ -26,8 +27,8 @@
 
 (defvar *s0* 0.01d0)
 
-(defvar *final-time* (* 3600d0 12))
-(defvar *output-time-interval* (* 3600d0 1))
+(defvar *final-time* (* 3600d0 1))
+(defvar *output-time-interval* (* 60d0 1))
 
 (defvar *simulation*
   (make-instance 'darcy-simulation

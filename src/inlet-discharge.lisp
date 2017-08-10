@@ -144,8 +144,16 @@ Will only have an effect if m > 0 and noise < 1"))
 represented as the collection of flow rates (INERMITTENT-PERIODS-FLOW-RATES)")
   (:metaclass closer-mop:funcallable-standard-class))
 
+(defun listify-periods (periods)
+  (loop for entry across periods
+     collect (loop for item across entry
+                collect item)))
+
 (defmethod initialize-instance :after ((obj intermittent-inlet-discharge) &key)
   (with-slots (intermittent-periods-flow-rates cycle-time) obj
+    (when (arrayp intermittent-periods-flow-rates)
+      (setf Intermittent-periods-flow-rates
+            (listify-periods intermittent-periods-flow-rates)))
     (setf cycle-time
           (loop for (time) in intermittent-periods-flow-rates
              sum time))
@@ -156,7 +164,7 @@ represented as the collection of flow rates (INERMITTENT-PERIODS-FLOW-RATES)")
                 (reduced-time (- time (* full-periods cycle-time))))
            (loop for (period-time period-inlet) in intermittent-periods-flow-rates
               if (minusp (- reduced-time period-time))
-              return (funcall period-inlet time)
+              return period-inlet
               else
               do (decf reduced-time period-time)
               end))))))

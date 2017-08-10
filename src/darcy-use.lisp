@@ -3,7 +3,8 @@
 (defpackage :darcy-use
   (:use #:cl #:unsaturated #:conductivity #:inlet-discharge
         #:darcy-model #:darcy-utils #:alexandria
-        #:cl-slice)
+        #:cl-slice
+        #:cl-numerics-scalar)
   (:export ;; re-export utils - useful
    #:fill-array #:init-array)
   (:export ;; unsaturated
@@ -49,7 +50,9 @@
    #:darcy-simulation-results
    #:darcy-simulation-output-time-interval
    #:darcy-simulation-plot-time-interval
-   #:simulate))
+   #:simulate)
+  (:export
+   #:saturation-from-relative-conductivity))
 
 (in-package darcy-use)
 
@@ -231,3 +234,9 @@
                   :inlet-discharge inlet-discharge
                   :outlet-discharge outlet-discharge
                   :model darcy)))))))
+
+;; * Other stuff
+(defun saturation-from-relative-conductivity (unsaturated-model rel-conductivity)
+  (let* ((rcond-function (relative-conductivity unsaturated-model))
+         (eq-function (lambda (x) (- (funcall rcond-function x) rel-conductivity))))
+    (bisection eq-function 1d-8 (- 1d0 1d-8) 1d-5 1d-5)))

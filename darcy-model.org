@@ -1,10 +1,10 @@
 #+TITLE: Darcy model TODO list and documentation
 
 * Features to add and implement
-** TODO Sort out the dependencies[0/2]
+** TODO Sort out the dependencies[1/2]
 *** TODO Complete =CL-NUMERICS-LINEAR=
     Don't need to do anything really, for =CL-NUMERICS= to work.
-*** TODO Changes in =CL-NUMERICS= [5/7]
+*** DONE Changes in =CL-NUMERICS= [7/7]
 **** DONE Merge UTILS.LISP and CL-NUMERICS-SCALAR
      CLOSED: [2017-06-28 Wed 13:37]
 **** DONE UTILS.LISP: RMS-NORM and EWT are the only ones depending on linear
@@ -14,11 +14,13 @@
      CLOSED: [2017-06-28 Wed 13:37]
 **** DONE QUAD.LISP: Add documentation
      CLOSED: [2017-06-28 Wed 13:48]
-**** TODO QUAD.LISP: Improve abstraction layer
+**** DONE QUAD.LISP: Improve abstraction layer
+     CLOSED: [2017-07-01 Sat 22:30]
      Translate error codes to conditions.
 **** DONE ODE.LISP: Add documentation
      CLOSED: [2017-06-28 Wed 13:56]
-**** TODO ODE.LISP: Simplify LSODA-STEP
+**** DONE ODE.LISP: Simplify LSODA-STEP
+     CLOSED: [2017-07-03 Mon 09:09]
      Function decoration and =RTOL= and =ATOL= manipulations must be
      performed once only in evolve (drive) function.
 ** TODO User functions to run model [2/4]
@@ -30,26 +32,40 @@
 **** DONE Saturation-conductivity plot
      CLOSED: [2017-06-29 Thu 00:24]
 **** DONE Plots wiht varying parameters
-     CLOSED: [2017-06-29 Thu 21:43]
-*** TODO Create model[1/4]
+     CLOSED: [2017-07-03 Mon 09:31]
+*** TODO Create model[2/4]
 **** DONE Uniform model with const flow rate
      CLOSED: [2017-06-30 Fri 13:18]
-**** TODO Uniform model with intermittent flow rate
+**** DONE Uniform model with intermittent flow rate
+     CLOSED: [2017-07-03 Mon 09:30]
 **** TODO Perturbed packing model with const flow rate
 **** TODO Perturbed packing with perturbed flow rate
 *** DONE Create simulation
     CLOSED: [2017-06-30 Fri 16:51]
-*** TODO Disect the results in Maxima & build plots[3/4]
+*** TODO Disect the results in Maxima & build plots[5/10]
 **** DONE Convert result arrays to lists.
      CLOSED: [2017-06-30 Fri 16:51]
-**** TODO Plot the results[2/3]
+**** DONE Plot the results[3/3]
+     CLOSED: [2017-07-03 Mon 09:32]
      - [X] Saturation
      - [X] Discharge
-     - [ ] Water content/volume
+     - [X] Water content/volume
 **** DONE See how to pass more parameters to gnuplot.
      CLOSED: [2017-06-30 Fri 16:51]
 **** DONE maxima and org-mode: display results and plots
      CLOSED: [2017-06-30 Fri 16:52]
      This one doesn't work: ob-maxima does not support sessions.
-
-
+**** TODO Save spreadsheet results in MAXIMA[0/4]
+     - [ ] File functions in MAXIMA
+     - [ ] How to save model parameters? Preferrably directly
+       readable.
+     - [ ] Save results in some kind of spreadsheet
+     - [ ] Save plots
+**** TODO Integrate with wxMaxima[0/1]
+     - [ ] Make terminal change in plot specs easy
+**** TODO Cleanup functions in MAXIMA
+**** DONE Cleanup functions in LISP[1/1]
+     CLOSED: [2017-07-03 Mon 10:00]
+     - [X] Struct instantiation: move some part to init
+**** TODO Write documentation on how to run the simulation
+**** TODO  Write the wxMaxima notebook with simulation setup

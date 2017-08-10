@@ -155,22 +155,31 @@
   (let ((size (darcy-size model))
         (space-step (space-step model)))
     (declare (type fixnum size) (type double-float space-step))
-    (let ((pressure (map 'vector #'pressure
+    (let* ((pressure (map 'vector #'pressure
+                          (the simple-array (unsaturated-models model))))
+           (relcond (map 'vector #'relative-conductivity
                          (the simple-array (unsaturated-models model))))
-          (relcond (map 'vector #'relative-conductivity
-                        (the simple-array (unsaturated-models model))))
-          (conductivities (conductivities model)))
+           (conductivities (conductivities model))
+           (saturated-conductivities (make-array size :element-type 'double-float))
+           (delta-theta (make-array size :element-type 'double-float)))
       (declare (type (simple-array function *) pressure relcond)
-               (type (simple-array conductivity *) conductivities))
-      (flet ((conductivity-at (s n)
+               (type (simple-array conductivity *) conductivities)
+               (type (simple-array double-float *) saturated-conductivities delta-theta))
+      (dotimes (i size)
+        (setf (aref saturated-conductivities i)
+              (saturated-conductivity (aref conductivities i))
+              (aref delta-theta i) (water-content-range model i)))
+      (flet ((conductivity-at (s n m)
                (declare (type (simple-array double-float *) s)
                         (type fixnum n))
-               (* (the double-float (funcall (aref relcond n) (aref s n)))
-                  ;; (the double-float (funcall (are relcond n)
-                  ;;                            (* (+ (aref s n) (aref s (1+ n)))
-                  ;;                               0.5d0)))
-                  (the double-float
-                       (saturated-conductivity (aref conductivities n)))))
+               (* ;; (the double-float (funcall (aref relcond n) (aref s n)))
+                (the double-float (funcall (aref relcond n)
+                                           (* (+ (aref s n) (aref s m))
+                                              0.5d0)))
+                (the double-float
+                     (aref saturated-conductivities n)
+                     ;;(saturated-conductivity (aref conductivities n))
+                     )))
              (pressure-at (s n)
                (funcall (aref pressure n) (aref s n))))
         (declare (inline conductivity-at pressure-at))
@@ -183,26 +192,27 @@
                 (pressure-next 0d0)
                 (flux-prev (darcy-inlet-discharge model time))
                 (flux-next 0d0)
-                (conductivity (conductivity-at saturation 0)))
+                (conductivity 0d0))
             (declare (type double-float
                            pressure-prev pressure-next flux-prev
                            flux-next conductivity))
             (dotimes (index (1- size))
               ;; (declare (type fixnum index))
               (setf pressure-next (pressure-at saturation (1+ index)))
+              (setf conductivity (conductivity-at saturation index (1+ index)))
               (setf flux-next (darcy-flux conductivity
                                           pressure-next
                                           pressure-prev
                                           space-step))
               (setf (aref ds index)
-                    (- (* (/ (water-content-range model index))
+                    (- (* (/ (aref delta-theta index))
                           (/ (- flux-next flux-prev) space-step))))
               (setf pressure-prev pressure-next)
-              (setf flux-prev flux-next)
-              (setf conductivity (conductivity-at saturation (1+ index))))
+              (setf flux-prev flux-next))
+            (setf conductivity (conductivity-at saturation (1- size) (1- size)))
             (setf flux-next conductivity)
             (setf (aref ds (1- size))
-                  (- (* (/ (water-content-range model (1- size)))
+                  (- (* (/ (aref delta-theta (1- size)))
                         (/ (- flux-next flux-prev) space-step))))))))))
 
 ;; *** Main interface: saturation evolution over time
@@ -228,5 +238,21 @@
                        below (+ final-time (* 0.1d0 fine-time-step))
                        by (coerce fine-time-step 'double-float)
                        collect time)
-                    #'collect-output)
+                    #'collect-output
+                    :banded-p t
+                    :lower-band 1
+                    :upper-band 1)
       (list (nreverse inlet) (nreverse saturations) (nreverse outlet)))))
+
+;; *** Utility functions
+(defun conductivity-at (darcy effsat index)
+  (let ((unsaturated-models (unsaturated-models darcy))
+        (conductivities (conductivities darcy)))
+    (* (funcall (relative-conductivity (aref unsaturated-models index))
+                (aref effsat index))
+       (saturated-conductivity (aref conductivities index)))))
+
+(defun pressure-at (darcy effsat index)
+  (let ((unsaturated-models (unsaturated-models darcy)))
+    (funcall (pressure (aref unsaturated-models index))
+             (aref effsat index))))
